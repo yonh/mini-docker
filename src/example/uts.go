@@ -1,4 +1,3 @@
-// uts.go
 package main
 
 import (

@@ -12,7 +12,7 @@ func main() {
 	cmd := exec.Command("sh")
 	// 指定进程的namespace参数
 	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Cloneflags: syscall.CLONE_NEWUTS | syscall.CLONE_NEWIPC ,
+		Cloneflags: syscall.CLONE_NEWUTS | syscall.CLONE_NEWIPC | syscall.CLONE_NEWPID ,
 	}
 
 	cmd.Stdin = os.Stdin
