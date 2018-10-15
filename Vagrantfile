@@ -20,7 +20,7 @@ Vagrant.configure("2") do |config|
 
   config.vm.provision "shell", inline: <<-SHELL
     apt-get update
-    apt-get install -y golang docker.io curl wget git
+    apt-get install -y golang docker.io curl wget git stress
     cp /vagrant/.bashrc /home/vagrant/.bashrc
   SHELL
 end
