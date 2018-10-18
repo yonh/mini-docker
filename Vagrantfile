@@ -14,13 +14,14 @@ Vagrant.configure("2") do |config|
   config.vm.provider "virtualbox" do |vb|
   # Display the VirtualBox GUI when booting the machine
     vb.gui = false
-    vb.memory = "1024"
+    vb.memory = "512"
   end
 
 
   config.vm.provision "shell", inline: <<-SHELL
     apt-get update
     apt-get install -y golang docker.io curl wget git stress
+    usermod -aG docker vagrant
     cp /vagrant/.bashrc /home/vagrant/.bashrc
   SHELL
 end
