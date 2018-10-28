@@ -1,4 +1,6 @@
 .DS_Store
+/pkg
 /*.log
 /.idea/
 /.vagrant
+mini-docker/mini-docker

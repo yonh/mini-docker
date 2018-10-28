@@ -6,18 +6,13 @@ import (
 	"os"
 )
 
-const usage  = "mini-docker is a simple container runtime implementation."
-
 func main() {
+	// 创建App,初始化相关参数
 	app := cli.NewApp()
 	app.Name = "mini-docker"
-	app.Usage = usage
+	app.Usage = "mini-docker is a simple container runtime implementation."
+	app.Version = "0.0.1"
 
-
-	app.Commands = []cli.Command{
-		initCommand,
-		runCommand,
-	}
 
 	app.Before = func(context *cli.Context) error {
 		log.SetOutput(os.Stdout)
