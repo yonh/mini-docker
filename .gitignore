@@ -3,4 +3,4 @@
 /*.log
 /.idea/
 /.vagrant
-mini-docker/mini-docker
+src/mini-docker/mini-docker
