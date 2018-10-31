@@ -78,16 +78,24 @@ func RunContainerInitProcess(command string, args []string) error {
 	return nil
 }
 
+/**
+ * 这里会启动一个子进程，子进程传入init参数，使得子进程调用init实现初始化的调用
+ */
 func Run(tty bool, command string) {
+
 	parent := NewParentProcess(tty, command)
 	if err := parent.Start(); err != nil {
-		//log.Error(err)
 		log.Fatal(err)
 	}
 	parent.Wait()
 	os.Exit(-1)
 }
 
+/**
+ * /proc/self/exe 指代的是当前进程本身，通过这种方式对创建出来的进程进行初始化
+ * 使得新进程在 namespace 隔离中，同时如果指定tty=true的话，将当前进程的输入输出转到新进程
+ * 当前command对象启动后会调用initCommand命令，并传入args参数
+ */
 func NewParentProcess(tty bool, command string) *exec.Cmd {
 	args := []string{"init", command}
 	cmd := exec.Command("/proc/self/exe", args...)
