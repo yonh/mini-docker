@@ -34,10 +34,19 @@ func RunContainerInitProcess(command string, args []string) error {
  * /proc/self/exe 指代的是当前进程本身，通过这种方式对创建出来的进程进行初始化
  * 使得新进程在 namespace 隔离中，同时如果指定tty=true的话，将当前进程的输入输出转到新进程
  * 当前command对象启动后会调用initCommand命令，并传入args参数
+ *
+ * + 这里去掉了原来的command参数，因为已经不需要传进来参数了
+ * + 同时函数增加返回值 writePipe 对象
  */
-func NewParentProcess(tty bool, command string) *exec.Cmd {
-	args := []string{"init", command}
-	cmd := exec.Command("/proc/self/exe", args...)
+func NewParentProcess(tty bool) (*exec.Cmd, *os.File ) {
+	readPipe, writePipe, err := NewPipe()
+
+	if (err != nil) {
+		log.Printf("New pipe error %v", err)
+		return nil, nil
+	}
+
+	cmd := exec.Command("/proc/self/exe", "init")
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Cloneflags: syscall.CLONE_NEWUTS | syscall.CLONE_NEWPID | syscall.CLONE_NEWNS |
 			syscall.CLONE_NEWNET | syscall.CLONE_NEWIPC,
@@ -48,5 +57,15 @@ func NewParentProcess(tty bool, command string) *exec.Cmd {
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 	}
-	return cmd
+	cmd.ExtraFiles = []*os.File{readPipe}
+
+	return cmd, writePipe
+}
+
+func NewPipe() (*os.File, *os.File, error) {
+	read, write, err := os.Pipe()
+	if err != nil {
+		return nil, nil, err
+	}
+	return read, write, nil
 }
