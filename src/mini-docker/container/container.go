@@ -1,18 +1,43 @@
 package container
 
 import (
+	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
+	"strings"
 	"syscall"
 )
 
 /**
  * 这里的代码是由容器内这个进程执行的
  * 这里首先mount proc 文件系统
+ * + 我们去掉原本函数的参数
  */
-func RunContainerInitProcess(command string, args []string) error {
-	log.Printf("RunContainerInitProcess: %s \n", command)
+func RunContainerInitProcess() error {
+	cmdArr := readUserCommands()
+	if cmdArr == nil || len(cmdArr) < 1 {
+		return fmt.Errorf("Run container get user command error, Commands is nil")
+	}
+
+	setupMount()
+
+	path, err := exec.LookPath(cmdArr[0])
+	if err != nil {
+		log.Printf("Exec loop path error %v", err)
+		return err
+	}
+
+	log.Printf("Find path %s", path)
+	if err := syscall.Exec(path, cmdArr[0:], os.Environ()); err != nil {
+		log.Printf(err.Error())
+	}
+	return nil
+}
+
+func setupMount() {
+	//log.Printf("RunContainerInitProcess: %s \n", command)
 
 	// MS_NOEXEC 在本文件系统下不允许运行其他程序
 	// MS_NOSUID 不允许set uid 或 set gid
@@ -27,7 +52,18 @@ func RunContainerInitProcess(command string, args []string) error {
 	if err := syscall.Exec(command, argv, os.Environ()); err != nil {
 		log.Fatal(err.Error())
 	}
-	return nil
+}
+
+func readUserCommands() []string {
+	pipe := os.NewFile(uintptr(3), "pipe")
+	msg, err := ioutil.ReadAll(pipe)
+	if err != nil {
+		//log.Errorf("init read pipe error %v", err)
+		log.Printf("[ERROR] init read pipe error %v", err)
+		return nil
+	}
+	msgStr := string(msg)
+	return strings.Split(msgStr, " ")
 }
 
 /**

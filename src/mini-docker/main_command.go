@@ -54,9 +54,7 @@ var initCommand = cli.Command{
 	Action: func(context *cli.Context) error {
 
 		log.Println("init...")
-		cmd := context.Args().Get(0)
-		log.Printf("initCommand %s\n", cmd)
-		err := container.RunContainerInitProcess(cmd, nil)
+		err := container.RunContainerInitProcess()
 		return err
 	},
 }
