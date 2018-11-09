@@ -21,7 +21,12 @@ func RunContainerInitProcess() error {
 		return fmt.Errorf("Run container get user command error, Commands is nil")
 	}
 
-	setupMount()
+	// MS_NOEXEC 在本文件系统下不允许运行其他程序
+	// MS_NOSUID 不允许set uid 或 set gid
+	// MS_NODEV  这个是自linux 2.4以来，所有mount都会默认设置的一个参数
+	defaultMountFlags := syscall.MS_NOEXEC | syscall.MS_NOSUID | syscall.MS_NODEV
+	syscall.Mount("proc", "/proc", "proc", uintptr(defaultMountFlags), "")
+
 
 	path, err := exec.LookPath(cmdArr[0])
 	if err != nil {
@@ -30,28 +35,14 @@ func RunContainerInitProcess() error {
 	}
 
 	log.Printf("Find path %s", path)
-	if err := syscall.Exec(path, cmdArr[0:], os.Environ()); err != nil {
-		log.Printf(err.Error())
-	}
-	return nil
-}
-
-func setupMount() {
-	//log.Printf("RunContainerInitProcess: %s \n", command)
-
-	// MS_NOEXEC 在本文件系统下不允许运行其他程序
-	// MS_NOSUID 不允许set uid 或 set gid
-	// MS_NODEV  这个是自linux 2.4以来，所有mount都会默认设置的一个参数
-	defaultMountFlags := syscall.MS_NOEXEC | syscall.MS_NOSUID | syscall.MS_NODEV
-	syscall.Mount("proc", "/proc", "proc", uintptr(defaultMountFlags), "")
-	argv := []string{command}
 
 	// 这里的syscall.Exec比较重要，按照我们目前的代码看来，容器执行后执行的第一个进程并不是我们指定的进程
 	// 那我们通过ps查看到的pid=1的进程不会是我们指定的进程，通过syscall.Exec 这个方法就可以解决这个问题
 	// 它会覆盖当前进程的镜像，数据，和堆栈信息，包括PID，使得我们可以替换掉本身的init进程。
-	if err := syscall.Exec(command, argv, os.Environ()); err != nil {
-		log.Fatal(err.Error())
+	if err := syscall.Exec(path, cmdArr[0:], os.Environ()); err != nil {
+		log.Printf(err.Error())
 	}
+	return nil
 }
 
 func readUserCommands() []string {
