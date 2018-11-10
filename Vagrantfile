@@ -9,6 +9,7 @@ Vagrant.configure("2") do |config|
     v.name = "mini-docker"
   end
 
+  config.vm.box_check_update = false
   # config.vm.synced_folder "../data", "/vagrant_data"
 
   config.vm.provider "virtualbox" do |vb|
