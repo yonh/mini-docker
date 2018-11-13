@@ -23,6 +23,14 @@ var runCommand = cli.Command{
 			Name: "m",
 			Usage: "memory limit",
 		},
+		cli.StringFlag{
+			Name: "cpushare",
+			Usage: "cpushare limit",
+		},
+		cli.StringFlag{
+			Name: "cpuset",
+			Usage: "cpuset limit",
+		},
 	},
 	Action: func(context *cli.Context) error {
 		if len(context.Args()) < 1 {
@@ -34,7 +42,6 @@ var runCommand = cli.Command{
 			cmdArray = append(cmdArray, arg)
 		}
 		tty := context.Bool("it")
-
 		resConf := &subsystem.ResourceConfig{
 			MemoryLimit: context.String("m"),
 			CpuSet: context.String("cpuset"),
@@ -80,6 +87,7 @@ func Run(tty bool,  cmdArr []string, res *subsystem.ResourceConfig) {
 	if err := parent.Start(); err != nil {
 		log.Fatal(err)
 	}
+
 	// + 通过cgroupManager配置创建Cgroup
 	cgroupManager := cgroup.NewCgroupManager("mini-docker")
 	defer cgroupManager.Destroy()
