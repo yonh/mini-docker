@@ -27,7 +27,8 @@ func RunContainerInitProcess() error {
 	defaultMountFlags := syscall.MS_NOEXEC | syscall.MS_NOSUID | syscall.MS_NODEV
 	syscall.Mount("proc", "/proc", "proc", uintptr(defaultMountFlags), "")
 
-
+	// 默认的syscall.exec系统调用需要传入命令的全路径，这里exec.LookPath操作是帮我们
+	// 在环境变量PATH里找出命令的全路径，使得我们可以在执行run命令是输入bash也可成功，而非必须/bin/bash
 	path, err := exec.LookPath(cmdArr[0])
 	if err != nil {
 		log.Printf("Exec loop path error %v", err)
@@ -46,6 +47,7 @@ func RunContainerInitProcess() error {
 }
 
 func readUserCommands() []string {
+	//uintptr(3)指的是index=3的文件描述符，这个就是前面传递进来的管道
 	pipe := os.NewFile(uintptr(3), "pipe")
 	msg, err := ioutil.ReadAll(pipe)
 	if err != nil {
@@ -84,11 +86,18 @@ func NewParentProcess(tty bool) (*exec.Cmd, *os.File ) {
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 	}
+
+	// 这里的作用是将创建的管道传给子进程
+	// cmd.ExtraFiles的意思是带着额外的文件句柄去创建进程
+	// 默认的进程会带着 标准输入，标准输出，标准错误这3个文件描述符
+	// 这里我们需要把第四个文件描述符传给子进程，通过此来传递命令行参数
+	// 可以通过/proc/self/fd查看当前文件描述符
 	cmd.ExtraFiles = []*os.File{readPipe}
 
 	return cmd, writePipe
 }
 
+// 生成匿名管道
 func NewPipe() (*os.File, *os.File, error) {
 	read, write, err := os.Pipe()
 	if err != nil {
