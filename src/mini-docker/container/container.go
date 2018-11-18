@@ -22,11 +22,7 @@ func RunContainerInitProcess() error {
 		return fmt.Errorf("Run container get user command error, Commands is nil")
 	}
 
-	// MS_NOEXEC 在本文件系统下不允许运行其他程序
-	// MS_NOSUID 不允许set uid 或 set gid
-	// MS_NODEV  这个是自linux 2.4以来，所有mount都会默认设置的一个参数
-	defaultMountFlags := syscall.MS_NOEXEC | syscall.MS_NOSUID | syscall.MS_NODEV
-	syscall.Mount("proc", "/proc", "proc", uintptr(defaultMountFlags), "")
+	setupMount()
 
 	// 默认的syscall.exec系统调用需要传入命令的全路径，这里exec.LookPath操作是帮我们
 	// 在环境变量PATH里找出命令的全路径，使得我们可以在执行run命令是输入bash也可成功，而非必须/bin/bash
@@ -45,6 +41,26 @@ func RunContainerInitProcess() error {
 		log.Printf(err.Error())
 	}
 	return nil
+}
+
+func setupMount() {
+
+	pwd, err := os.Getwd()
+	if (err != nil) {
+		fmt.Printf("[Error] Get current location error %v", err)
+		return
+	}
+	fmt.Printf("Current location is %s", pwd)
+	pivotRoot(pwd)
+
+	// mount proc
+	// MS_NOEXEC 在本文件系统下不允许运行其他程序
+	// MS_NOSUID 不允许set uid 或 set gid
+	// MS_NODEV  这个是自linux 2.4以来，所有mount都会默认设置的一个参数
+	defaultMountFlags := syscall.MS_NOEXEC | syscall.MS_NOSUID | syscall.MS_NODEV
+	syscall.Mount("proc", "/proc", "proc", uintptr(defaultMountFlags), "")
+	syscall.Mount("tmpfs", "/dev", "tmpfs", syscall.MS_NOSUID|syscall.MS_STRICTATIME, "mode=755")
+
 }
 
 func readUserCommands() []string {
