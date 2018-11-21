@@ -110,6 +110,11 @@ func NewParentProcess(tty bool) (*exec.Cmd, *os.File ) {
 	// 这里我们需要把第四个文件描述符传给子进程，通过此来传递命令行参数
 	// 可以通过/proc/self/fd查看当前文件描述符
 	cmd.ExtraFiles = []*os.File{readPipe}
+	//cmd.Dir = "/root/busybox"
+	mntURL := "/root/mnt/"
+	rootURL := "/root/"
+	NewWorkSpace(rootURL, mntURL)
+	cmd.Dir = mntURL
 
 	return cmd, writePipe
 }
@@ -153,4 +158,86 @@ func pivotRoot(root string) error {
 	}
 	// 删除临时文件夹
 	return os.Remove(pivotDir)
+}
+
+
+//创建AUFS文件系统
+func NewWorkSpace(rootURL string, mntURL string) {
+	CreateReadOnlyLayer(rootURL)
+	CreateWriteLayer(rootURL)
+	CreateMountPoint(rootURL, mntURL)
+}
+
+func CreateReadOnlyLayer(rootURL string) {
+	busyboxURL := rootURL + "busybox/"
+	busyboxTarURL := rootURL + "busybox.tar"
+	exist, err := PathExists(busyboxURL)
+	if err != nil {
+		log.Printf("Fail to judge whether dir %s exists. %v", busyboxURL, err)
+	}
+	if exist == false {
+		if err := os.Mkdir(busyboxURL, 0777); err != nil {
+			log.Printf("Mkdir dir %s error. %v", busyboxURL, err)
+		}
+		if _, err := exec.Command("tar", "-xvf", busyboxTarURL, "-C", busyboxURL).CombinedOutput(); err != nil {
+			log.Printf("Untar dir %s error %v", busyboxURL, err)
+		}
+	}
+}
+
+func CreateWriteLayer(rootURL string) {
+	writeURL := rootURL + "writeLayer/"
+	if err := os.Mkdir(writeURL, 0777); err != nil {
+		log.Printf("Mkdir dir %s error. %v", writeURL, err)
+	}
+}
+
+
+func CreateMountPoint(rootURL string, mntURL string) {
+	if err := os.Mkdir(mntURL, 0777); err != nil {
+		log.Printf("Mkdir dir %s error. %v", mntURL, err)
+	}
+	dirs := "dirs=" + rootURL + "writeLayer:" + rootURL + "busybox"
+	cmd := exec.Command("mount", "-t", "aufs", "-o", dirs, "none", mntURL)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		log.Printf("%v", err)
+	}
+}
+
+//Delete the AUFS filesystem while container exit
+func DeleteWorkSpace(rootURL string, mntURL string){
+	DeleteMountPoint(rootURL, mntURL)
+	DeleteWriteLayer(rootURL)
+}
+
+func DeleteMountPoint(rootURL string, mntURL string){
+	cmd := exec.Command("umount", mntURL)
+	cmd.Stdout=os.Stdout
+	cmd.Stderr=os.Stderr
+	if err := cmd.Run(); err != nil {
+		log.Printf("%v",err)
+	}
+	if err := os.RemoveAll(mntURL); err != nil {
+		log.Printf("Remove dir %s error %v", mntURL, err)
+	}
+}
+
+func DeleteWriteLayer(rootURL string) {
+	writeURL := rootURL + "writeLayer/"
+	if err := os.RemoveAll(writeURL); err != nil {
+		log.Printf("Remove dir %s error %v", writeURL, err)
+	}
+}
+
+func PathExists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, err
 }
